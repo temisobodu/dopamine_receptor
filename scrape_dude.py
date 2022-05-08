@@ -41,4 +41,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--email', help='Your email')
     parser.add_argument('--smiles_file', help='Your email')
-
+    smiles_list = pd.read_csv(args.smiles_file, head=None)[0].to_list()
+    temp_smiles = []
+    for idx, smiles in enumerate(smiles_list):
+        temp_smiles.append(smiles)
+        if idx%100 == 0:
+            print(f"Submitting smile number {idx}")
+            scrape_dude(args.email, temp_smiles)
+            temp_smiles = []
+        
