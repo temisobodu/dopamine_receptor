@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from typing import List
 import argparse
+import pandas as pd
 
 def find_download_links(driver, target: str, retries: int = 2):
     download_links = driver.find_elements_by_xpath('//a')
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     temp_smiles = []
     for idx, smiles in enumerate(smiles_list):
         temp_smiles.append(smiles)
-        if idx%100 == 0:
+        if idx%50 == 0:
             print(f"Submitting smile number {idx}")
             scrape_dude(args.email, temp_smiles)
             temp_smiles = []
