@@ -1,3 +1,4 @@
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -6,6 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from typing import List
 import argparse
 import pandas as pd
+
 
 def find_download_links(driver, target: str, retries: int = 2):
     download_links = driver.find_elements_by_xpath('//a')
@@ -22,7 +24,7 @@ def find_download_links(driver, target: str, retries: int = 2):
 
 def scrape_dude(email: str, smiles: List) -> str:
     url = 'http://dude.docking.org/generate'
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.get(url)
 
     email_field = driver.find_element_by_id('email')
@@ -42,12 +44,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--email', help='Your email')
     parser.add_argument('--smiles_file', help='Your email')
-    smiles_list = pd.read_csv(args.smiles_file, head=None)[0].to_list()
+    args = parser.parse_args()
+    smiles_list = pd.read_csv(args.smiles_file, header=None)[0].to_list()
     temp_smiles = []
     for idx, smiles in enumerate(smiles_list):
         temp_smiles.append(smiles)
-        if idx%50 == 0:
+        if idx%10 == 0:
             print(f"Submitting smile number {idx}")
             scrape_dude(args.email, temp_smiles)
             temp_smiles = []
-        
+        time.sleep(1)        
