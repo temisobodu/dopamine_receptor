@@ -7,6 +7,9 @@ import math
 import os
 import sys
 import textwrap
+from pathlib import Path
+import argparse
+import pandas as pd
 
 class CartesianPoint:
 
@@ -271,16 +274,30 @@ class AtomCountFeaturizer:
 		#print (np.array(list(feature_dict.values())).reshape(1, -1))
 		return feature_dict
 
-
 					
-
-def exec_func(File):
+def exec_func(File, active_or_decoy):
 	rf = AtomCountFeaturizer(File).calc_feature()
-	return rf
+	rf["complex"] = File
+	rf['class'] = active_or_decoy
+	return pd.DataFrame.from_dict(rf, orient="index").T
 
-#DIRIN='/fccc/users/karanicolaslab/adeshiy'
+#DIRIN='/Users/sobotope/Desktop/Equibind_/Equibind/data/results/output/decoy_complex/'
 
-#INFILE=sys.argv[1]
 
-#exec_func(INFILE)
+#print(exec_func('complex_ZZJYIKPMDIWRSN-HWBMXIPRSA-N.pdb', 'decoy'))
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog="RF features")    
+    parser.add_argument('--input_dir', help="directory containing your complexes")
+    parser.add_argument('--output', help="file to save output feature csv")
+    parser.add_argument('--active_or_decoy', help="active or decoy class")
+    args = parser.parse_args()
+    list_of_complexes = list(Path(args.input_dir).glob('*pdb'))
+    dataframe_list = []
+    for pdb in list_of_complexes :
+        dataframe_list.append(exec_func(str(pdb), args.active_or_decoy))
+    pd.concat(dataframe_list).to_csv(args.output, index=False)
+
+
+
 

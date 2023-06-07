@@ -1,0 +1,284 @@
+---
+title: "xgboost cv"
+output: "html_document"
+
+always_allow_html:yes
+---
+
+```{r setup, include=FALSE}
+library(xgboost)
+library(caret)
+library(tidyverse)
+library(caTools)
+library(MLmetrics)
+
+attach(active_decoy_rf_combine_2_3)
+view(active_decoy_rf_combine_2_3)
+data.ligand = active_decoy_rf_combine_2_3
+
+data.ligand$class = as.factor(data.ligand$class)
+
+```
+
+Partition and process split data for xgboost training 
+
+```{r}
+
+set.seed(123)
+
+data.ligand$class = as.factor(data.ligand$class)
+index.xgb = createDataPartition(data.ligand$class, p= 0.8, list = F)
+train.xgb = data.ligand[index.xgb,]
+test.xgb = data.ligand[-index.xgb,]
+
+
+
+trained = model.matrix(class ~. -1, data = train.xgb)
+trainlabel = train.xgb[,1]
+trainlabel = as.numeric(unlist(trainlabel)) -1
+glimpse(trainlabel)
+
+
+
+tested = model.matrix(class ~. -1, data = test.xgb)
+testlabel = test.xgb[,1]
+testlabel = as.numeric(unlist(testlabel)) -1
+glimpse(testlabel)
+
+
+
+
+trainmatrix = xgb.DMatrix(data = trained, label = trainlabel)
+
+
+```
+
+Train with xgboost K-fold cv, where k =10 
+
+
+```{r}
+
+
+cv.xgb = xgb.cv(data = trainmatrix,
+                objective= "binary:logistic",
+                nrounds =100,
+                nthread  =3,
+                eta =0.3,
+                metrics = list("rmse", "auc","logloss"),
+                nfold =10,
+                max_depth =3,
+                prediction = T,
+                callbacks = list(cb.print.evaluation(period = 1,showsd = T),
+                cb.evaluation.log(),
+                cb.cv.predict(save_models = FALSE)))
+
+
+              
+                
+print(cv.xgb, verbose = T)
+
+cv.xgb = xgb.cv(data = trainmatrix,
+                objective= "binary:logistic",
+                nrounds =100,
+                nthread  =3,
+                eta =0.3,
+                metrics = list("rmse", "auc","logloss"),
+                nfold =10,
+                max_depth =3,
+                prediction = T,
+                callbacks = list(cb.print.evaluation(period = 1,showsd = T),
+                cb.evaluation.log(),
+                cb.cv.predict(save_models = FALSE)))
+
+
+cv.xgb$pred               
+                
+print(cv.xgb, verbose = T)
+
+cv.xgb$pred
+
+```
+
+LOOCV with slice function 
+
+```{r}
+
+data.lig1 = slice(data.ligand, (1:9000))
+View(data.lig1)
+data.lig2 = slice(data.ligand, -(8000:8999))
+View(data.lig2)
+data.lig3 = slice(data.ligand, -(7000:7999))
+View(data.lig3)
+data.lig4 = slice(data.ligand, -(6000:6999))
+View(data.lig4)
+data.lig5 = slice(data.ligand, -(5000:5999))
+glimpse(data.lig5)
+data.lig6 = slice(data.ligand, -(4000:4999))
+glimpse(data.lig6)
+data.lig7 = slice(data.ligand, -(3000:3999))
+glimpse(data.lig7)
+data.lig8 = slice(data.ligand, -(2000:2999))
+glimpse(data.lig8)
+data.lig9 = slice(data.ligand, -(1000:1999))
+glimpse(data.lig9)
+data.lig10 = slice(data.ligand, -(1:1000))
+glimpse(data.lig10)
+
+```
+Here are the models with top two F1 and MCC scores 
+
+
+```{r}
+
+set.seed(123)
+index.xgb5 = createDataPartition(data.lig5$class, p= 0.8, list = F)
+train.xgb5 = data.lig5[index.xgb5,]
+test.xgb5 = data.lig5[-index.xgb5,]
+
+
+
+trained5 = model.matrix(class ~. -1, data = train.xgb5)
+trainlabel5 = train.xgb5[,1]
+trainlabel5 = as.numeric(unlist(trainlabel5)) -1
+glimpse(trainlabel5)
+
+view(trainlabel5)
+
+
+tested5 = model.matrix(class ~. -1, data = test.xgb5)
+testlabel5 = test.xgb5[,1]
+testlabel5 = as.numeric(unlist(testlabel5)) -1
+glimpse(testlabel5)
+
+
+
+
+trainmatrix5 = xgb.DMatrix(data = trained5, label = trainlabel5)
+
+model.xgboost5 = xgboost::xgboost(data = trainmatrix5,
+                                  objective= "binary:logistic",
+                                  nrounds =100,
+                                  nthread  =3,
+                                  eta =0.3,
+                                  metrics = list("rmse", "auc","logloss"))
+
+
+pred.xgb5 = predict(model.xgboost5, tested5)
+pred.xgb5 = as.integer(pred.xgb5 >0.5)
+pred.xgb.cha5 = ifelse(pred.xgb5 >0.5, "decoy","active")
+pred.xgb.cha5
+g5 =confusionMatrix(as.factor(pred.xgb5), as.factor(testlabel5))
+
+g5
+
+conf.xgb5 = ConfusionMatrix(y_pred = pred.xgb5, y_true = test.xgb5$class)
+
+conf.xgb5
+tp.xgb5 = conf.xgb5[1] 
+fp.xgb5 = conf.xgb5[2]
+fn.xgb5 = conf.xgb5[3]
+tn.xgb5 = conf.xgb5[4]
+
+tpr.xgb5 = tp.xgb5/(tp.xgb5 + fn.xgb5)
+tnr.xgb5 = tn.xgb5/(tn.xgb5 + fp.xgb5)
+ppv.xgb5 = tp.xgb5/(tp.xgb5 + fp.xgb5)
+
+
+f1score.xgb5 = 2*((ppv.xgb5*tpr.xgb5)/(ppv.xgb5+tpr.xgb5))
+
+f1score.xgb5
+
+mcc5 =mcc(data.lig5, test.xgb5$class,as.factor(pred.xgb.cha5))
+
+mcc5
+
+
+```
+
+```{r}
+
+
+set.seed(123)
+index.xgb6 = createDataPartition(data.lig6$class, p= 0.8, list = F)
+train.xgb6 = data.lig6[index.xgb6,]
+test.xgb6 = data.lig6[-index.xgb6,]
+
+
+
+trained6 = model.matrix(class ~. -1, data = train.xgb6)
+trainlabel6 = train.xgb6[,1]
+trainlabel6 = as.numeric(unlist(trainlabel6)) -1
+glimpse(trainlabel6)
+
+view(trainlabel6)
+
+
+tested6 = model.matrix(class ~. -1, data = test.xgb6)
+testlabel6 = test.xgb6[,1]
+testlabel6 = as.numeric(unlist(testlabel6)) -1
+glimpse(testlabel6)
+
+
+
+
+trainmatrix6 = xgb.DMatrix(data = trained6, label = trainlabel6)
+
+model.xgboost6 = xgboost::xgboost(data = trainmatrix6,
+                                  objective= "binary:logistic",
+                                  nrounds =100,
+                                  nthread  =3,
+                                  eta =0.3,
+                                  metrics = list("rmse", "auc","logloss"))
+
+
+pred.xgb6 = predict(model.xgboost6, tested6)
+pred.xgb6 = as.integer(pred.xgb6 >0.5)
+pred.xgb.cha6 = ifelse(pred.xgb6 >0.5, "decoy","active")
+pred.xgb.cha6
+g6 =confusionMatrix(as.factor(pred.xgb6), as.factor(testlabel6))
+
+g6
+
+conf.xgb6 = ConfusionMatrix(y_pred = pred.xgb6, y_true = test.xgb6$class)
+
+conf.xgb6
+tp.xgb6 = conf.xgb6[1] 
+fp.xgb6 = conf.xgb6[2]
+fn.xgb6 = conf.xgb6[3]
+tn.xgb6 = conf.xgb6[4]
+
+tpr.xgb6 = tp.xgb6/(tp.xgb6 + fn.xgb6)
+tnr.xgb6 = tn.xgb6/(tn.xgb6 + fp.xgb6)
+ppv.xgb6 = tp.xgb6/(tp.xgb6 + fp.xgb6)
+
+
+f1score.xgb6 = 2*((ppv.xgb6*tpr.xgb6)/(ppv.xgb6+tpr.xgb6))
+
+f1score.xgb6
+
+
+mcc6 =mcc(data.lig6, test.xgb6$class,as.factor(pred.xgb.cha6))
+
+mcc6
+
+```
+```{r}
+
+
+rmarkdown::render("xgb cv models",
+                  output_format = "")
+
+```
+
+## R Markdown
+
+
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+
+
